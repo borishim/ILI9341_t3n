@@ -1862,6 +1862,81 @@ void ILI9341_t3n::writeRect8BPP(int16_t x, int16_t y, int16_t w, int16_t h, cons
 	endSPITransaction();
 }
 
+// writeRect8BPP - 	write 8 bit per pixel paletted bitmap
+//					bitmap data in array at pixels, one byte per pixel
+//					color palette data in array at palette
+void ILI9341_t3n::writePatch8BPP(int16_t x, int16_t y, int16_t w, int16_t h, int16_t tft_x, int16_t tft_y, int16_t tft_width, int16_t tft_height, const uint8_t *pixels, const uint16_t * palette )
+{
+	//Serial.printf("\nWR8: %d %d %d %d %x\n", x, y, w, h, (uint32_t)pixels);
+	x+=_originx;
+	y+=_originy;
+
+	uint16_t x_clip_left = 0;  // How many entries at start of colors to skip at start of row
+	uint16_t x_clip_right = 0;    // how many color entries to skip at end of row for clipping
+	// Rectangular clipping 
+
+	// See if the whole thing out of bounds...
+	if((x >= _displayclipx2) || (y >= _displayclipy2)) return;
+	if (((x+w) <= _displayclipx1) || ((y+h) <= _displayclipy1)) return;
+
+	// In these cases you can not do simple clipping, as we need to synchronize the colors array with the
+	// We can clip the height as when we get to the last visible we don't have to go any farther. 
+	// also maybe starting y as we will advance the color array. 
+ 	if(y < _displayclipy1) {
+ 		int dy = (_displayclipy1 - y);
+ 		h -= dy; 
+ 		//pixels += (dy*w); // Advance color array to 
+ 		y = _displayclipy1; 	
+ 	}
+
+	if((y + h - 1) >= _displayclipy2) h = _displayclipy2 - y;
+
+	// For X see how many items in color array to skip at start of row and likewise end of row 
+	if(x < _displayclipx1) {
+		x_clip_left = _displayclipx1-x; 
+		w -= x_clip_left; 
+		x = _displayclipx1; 	
+	}
+	if((x + w - 1) >= _displayclipx2) {
+		x_clip_right = w;
+		w = _displayclipx2  - x;
+		x_clip_right -= w; 
+	} 
+	//Serial.printf("WR8C: %d %d %d %d %x- %d %d\n", x, y, w, h, (uint32_t)pixels, x_clip_right, x_clip_left);
+	#ifdef ENABLE_ILI9341_FRAMEBUFFER
+	if (_use_fbtft) {
+		updateChangedRange(x, y, w, h);		// update the range of the screen that has been changed;
+		uint16_t * pfbPixel_row = &_pfbtft[ y*_width + x];
+		for (;h>0; h--) {
+			pixels += x_clip_left;
+			uint16_t * pfbPixel = pfbPixel_row;
+			for (int i = 0 ;i < w; i++) {
+				*pfbPixel++ = palette[*pixels++];
+			}
+			pixels += x_clip_right;
+			pfbPixel_row += _width;
+		}
+		return;	
+	}
+	#endif
+
+	beginSPITransaction(_SPI_CLOCK);
+	setAddr(x + tft_x, y + tft_y, x + tft_x+w-1, y + tft_y +h-1);
+	writecommand_cont(ILI9341_RAMWR);
+	int xx, yy;
+	for(yy=0; yy<h; yy++) {
+		//pixels += x_clip_left;
+		//Serial.printf("%x: ", (uint32_t)pixels);
+		for(xx=0; xx<w-1; xx++) {
+			//Serial.print(*pixels, DEC);
+			writedata16_cont(palette[pixels[tft_width * (y + yy) + x + xx]]);
+		}
+		//Serial.println(*pixels, DEC);
+		writedata16_last(palette[pixels[tft_width * (y + yy) + x + xx]]);
+		//pixels += x_clip_right;
+	}
+	endSPITransaction();
+}
 // writeRect4BPP - 	write 4 bit per pixel paletted bitmap
 //					bitmap data in array at pixels, 4 bits per pixel
 //					color palette data in array at palette
