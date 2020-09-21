@@ -293,6 +293,7 @@ class ILI9341_t3n : public Print
 	void readRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t *pcolors);
 	void writeRect(int16_t x, int16_t y, int16_t w, int16_t h, const uint16_t *pcolors);
 
+	void writePatch(int16_t x, int16_t y, int16_t w, int16_t h, int16_t tft_x, int16_t tft_y, int16_t tft_width, int16_t tft_height, const uint16_t * pcolors );
 	void writePatch8BPP(int16_t x, int16_t y, int16_t w, int16_t h, int16_t tft_x, int16_t tft_y, int16_t tft_width, int16_t tft_height, const uint8_t *pixels, const uint16_t * palette );
 
 	// writeRect8BPP - 	write 8 bit per pixel paletted bitmap
